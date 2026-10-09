@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RI-01 Revisió Split A.C.</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--bg:#f3f5f7;--card:#fff;--ink:#14212b;--mut:#5b6b78;--line:#cfd8df;--pri:#0b2d50;--ok:#1b7f3b;--no:#c0392b;--na:#6b7780}
+*{box-sizing:border-box}
+body{margin:0;font:17px/1.4 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--pri);color:#fff;padding:12px 16px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:18px}
+header small{opacity:.85}
+main{padding:12px;max-width:720px;margin:auto}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;margin-bottom:14px;padding:12px}
+h2{font-size:15px;margin:-12px -12px 10px;padding:9px 12px;background:var(--pri);color:#fff;border-radius:5px 5px 0 0;letter-spacing:.03em}
+label{display:block;font-size:14px;color:var(--mut);margin-top:8px}
+input[type=text],input[type=email],input[type=number],textarea{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
+input[readonly]{background:#eef2f5}
+.pt{border-top:1px solid var(--line);padding:12px 0}
+.pt:first-of-type{border-top:0}
+.pt>b{display:block;margin-bottom:8px}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;min-height:48px;font:inherit;font-weight:600;border:2px solid var(--line);background:#fff;border-radius:4px;color:var(--mut)}
+.seg button.on[data-r=ok]{background:var(--ok);border-color:var(--ok);color:#fff}
+.seg button.on[data-r=nok]{background:var(--no);border-color:var(--no);color:#fff}
+.seg button.on[data-r=na]{background:var(--na);border-color:var(--na);color:#fff}
+.seg.neu button.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.row{display:flex;gap:8px;align-items:center;margin-top:6px}
+.row input{flex:1}
+.row span{min-width:34px;color:var(--mut)}
+.sub{font-size:14px;color:var(--mut);margin-top:10px}
+.photo{position:relative;display:inline-block;min-height:48px;padding:12px 14px;border:2px dashed var(--pri);border-radius:4px;color:var(--pri);font-weight:600;margin:8px 8px 0 0}
+.photo.has{border-style:solid;background:#e6eef6}
+.thumb{display:block;max-width:180px;margin-top:8px;border-radius:4px}
+.thumb[hidden]{display:none}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+canvas{width:100%;height:130px;border:1px solid var(--line);border-radius:4px;background:#fff;touch-action:none}
+.btn{width:100%;min-height:52px;font:inherit;font-weight:700;border:0;border-radius:4px;background:var(--pri);color:#fff;margin-top:10px}
+.btn.sec{background:#fff;color:var(--pri);border:2px solid var(--pri)}
+.btn.mini{min-height:40px;margin-top:6px}
+#msg{margin:10px 0;font-weight:600}
+.err{color:var(--no)}.good{color:var(--ok)}
+:focus-visible{outline:3px solid #f5a623;outline-offset:2px}
+</style>
+</head>
+<body>
+<header><h1>RI-01 Revisió Split A.C.</h1><small>Termotur · Divisió manteniment preventiu · <span id="dat"></span></small></header>
+<main>
+<section>
+<h2>DADES DEL SERVEI</h2>
+<label>Projecte<input type="text" id="prj"></label>
+<label>Direcció<input type="text" id="dir"></label>
+<label>Servei<input type="text" value="AIRE CONDICIONAT" readonly></label>
+<label>Operari responsable de la intervenció<input type="text" id="ope"></label>
+<label>Email del client (opcional)<input type="email" id="mail"></label>
+</section>
+
+<section>
+<h2>APARELL D'AIRE CONDICIONAT</h2>
+<label>Marca<input type="text" id="mar"></label>
+<label>Model<input type="text" id="mod"></label>
+<label>Nº d'aparell<input type="text" id="num"></label>
+<label>Planta / zona<input type="text" id="zona"></label>
+<label>Ubicació (sala, espai...)<input type="text" id="ubi"></label>
+<label>Gas refrigerant<input type="text" id="gas"></label>
+</section>
+
+<div id="fa"></div>
+<section id="ops"><h2>OPERACIONS A REALITZAR</h2></section>
+<div id="fd"></div>
+
+<section>
+<h2>8 · OBSERVACIÓ GENERAL</h2>
+<textarea id="obg" rows="3"></textarea>
+</section>
+<section>
+<h2>9 · OBSERVACIONS PERSONAL SERVEI TÈCNIC</h2>
+<textarea id="obt" rows="3"></textarea>
+</section>
+
+<section>
+<h2>SIGNATURES</h2>
+<div class="sub">Tècnic (Marc Xavier Tur Doherty)</div>
+<canvas id="f1"></canvas><button class="btn sec mini" data-c="1">Esborrar</button>
+<div class="sub">Operari responsable de la intervenció</div>
+<canvas id="f2"></canvas><button class="btn sec mini" data-c="2">Esborrar</button>
+</section>
+
+<div id="msg"></div>
+<button class="btn" id="enviar">Enviar a l'oficina</button>
+<button class="btn sec" id="bajar">Descarregar PDF de prova</button>
+</main>
+
+<script>
+// ===== CONFIGURACIÓ =====
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz7yq0HsXJLn-cSS0xyxY0MpNDMjoXpuH3TCDXMbciWg6Xy5acqCTdDMRiNImzcCLtRYg/exec";
+const LOGO="data:image/jpeg;base64,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"; // URL de l'aplicació web d'Apps Script (acaba en /exec)
+
+// ===== OPERACIONS (editable) =====
+// tp: num = número | txt = text | sino = Sí / No
+const OPS=[
+ {n:1,t:"Comprovació del bon estat dels filtres",c:[{k:"sub",x:"Requereix substitució",tp:"sino"}]},
+ {n:2,t:"Neteja i desinfecció dels filtres",c:[{k:"des",x:"Desinfectant aplicat",u:"Lts",tp:"num"},{k:"tip",x:"Tipus",tp:"txt"}]},
+ {n:3,t:"Comprovació de pressions",c:[{k:"pa",x:"Pressió d'alta",u:"Kg",tp:"num"},{k:"pb",x:"Pressió de baixa",u:"Kg",tp:"num"}]},
+ {n:4,t:"Comprovació de temperatures",c:[
+   {k:"ti",x:"Temp. impulsió (unitat interior)",u:"ºC",tp:"num"},{k:"tr",x:"Temp. retorn (unitat interior)",u:"ºC",tp:"num"},
+   {k:"te",x:"Temp. entrada aire (unitat exterior)",u:"ºC",tp:"num"},{k:"ts",x:"Temp. sortida aire (unitat exterior)",u:"ºC",tp:"num"}]},
+ {n:5,t:"Càrrega de gas correcta d'acord amb el dimensionat de la canonada frigorífica i la capacitat de l'aparell",c:[{k:"gaf",x:"Gas afegit",u:"Kg",tp:"num"}]},
+ {n:6,t:"Presa de dades de consums elèctrics",c:[{k:"amp",x:"Ampers",u:"A",tp:"num"}]},
+ {n:7,t:"Posta en marxa",c:[{k:"fun",x:"Funcionament correcte de l'aparell (segons observació general, punt 8)",tp:"sino"}]}
+];
+
+const $=s=>document.querySelector(s), g=id=>document.getElementById(id).value.trim();
+const R={ops:{},fa:"",fd:""};
+const fechaHoy=new Date().toLocaleDateString("ca-ES");
+$("#dat").textContent=fechaHoy;
+const msg=(t,c)=>{$("#msg").textContent=t;$("#msg").className=c||""};
+
+// ===== Fotos =====
+function comprimir(file){
+  return new Promise((res,rej)=>{
+    const img=new Image(),u=URL.createObjectURL(file);
+    img.onload=()=>{try{
+      const k=Math.min(1,1024/Math.max(img.width,img.height)),c=document.createElement("canvas");
+      c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",.6));
+    }catch(e){rej(e)}};
+    img.onerror=()=>rej(new Error("format no compatible o foto massa gran"));
+    img.src=u;
+  });
+}
+function bloqueFoto(id,titulo){
+  const s=document.createElement("section");
+  s.innerHTML=`<h2>${titulo}</h2>
+   <label class="photo">Fer foto<input type="file" accept="image/*" capture="environment"></label>
+   <label class="photo">Triar arxiu<input type="file" accept="image/*"></label>
+   <img class="thumb" hidden>`;
+  s.querySelectorAll("input").forEach(inp=>inp.onchange=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    try{
+      R[id]=await comprimir(f);
+      const im=s.querySelector(".thumb");im.src=R[id];im.hidden=false;
+      s.querySelectorAll(".photo").forEach(p=>p.classList.add("has"));msg("");
+    }catch(err){msg("No s'ha pogut processar la foto: "+err.message,"err")}
+    e.target.value="";
+  });
+  $("#"+id).appendChild(s);
+}
+bloqueFoto("fa","FOTO ABANS DE LA INTERVENCIÓ (estat de l'aparell)");
+bloqueFoto("fd","FOTO DESPRÉS DE LA INTERVENCIÓ");
+
+// ===== Operacions =====
+OPS.forEach(o=>{
+  const a=R.ops[o.n]={r:"",c:{}};
+  const d=document.createElement("div");d.className="pt";
+  d.innerHTML=`<b>${o.n}. ${o.t}</b>
+   <div class="seg"><button data-r="ok">OK</button><button data-r="nok">No OK</button><button data-r="na">N/A</button></div>`;
+  d.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
+    a.r=b.dataset.r;d.querySelectorAll(".seg:first-of-type button").forEach(x=>x.classList.toggle("on",x===b));
+  });
+  o.c.forEach(c=>{
+    const w=document.createElement("div");
+    if(c.tp==="sino"){
+      w.innerHTML=`<div class="sub">${c.x}</div><div class="seg neu"><button>Sí</button><button>No</button></div>`;
+      w.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+        a.c[c.k]=b.textContent;w.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+      });
+    }else{
+      w.innerHTML=`<div class="sub">${c.x}</div><div class="row"><input ${c.tp==="num"?'type="number" inputmode="decimal"':'type="text"'}>${c.u?`<span>${c.u}</span>`:""}</div>`;
+      w.querySelector("input").oninput=e=>a.c[c.k]=e.target.value;
+    }
+    d.appendChild(w);
+  });
+  $("#ops").appendChild(d);
+});
+
+// ===== Signatures =====
+function mkFirma(id){
+  const cv=document.getElementById(id),cx=cv.getContext("2d");let dib=false,ok=false;
+  cv.width=cv.offsetWidth;cv.height=cv.offsetHeight;cx.lineWidth=2.5;cx.lineCap="round";cx.strokeStyle="#14212b";
+  const p=e=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
+  cv.onpointerdown=e=>{dib=true;ok=true;cx.beginPath();cx.moveTo(...p(e))};
+  cv.onpointermove=e=>{if(dib){cx.lineTo(...p(e));cx.stroke()}};
+  cv.onpointerup=cv.onpointerleave=()=>dib=false;
+  return{ok:()=>ok,img:()=>cv.toDataURL("image/png"),clear:()=>{cx.clearRect(0,0,cv.width,cv.height);ok=false}};
+}
+const F={1:mkFirma("f1"),2:mkFirma("f2")};
+document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>F[b.dataset.c].clear());
+
+// ===== PDF =====
+function crearPDF(){
+  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:"mm",format:"a4"});
+  const W=210,M=12,IW=W-2*M;let y=M;
+  const salto=h=>{if(y+h>287){doc.addPage();y=M}};
+  const barra=t=>{salto(12);doc.setFillColor(11,45,80);doc.rect(M,y,IW,6.5,"F");doc.setTextColor(255);
+    doc.setFont("helvetica","bold");doc.setFontSize(10);doc.text(t,W/2,y+4.5,{align:"center"});doc.setTextColor(0);y+=9.5};
+  const fila=(a,b)=>{salto(6);doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.text(a,M,y);
+    doc.setFont("helvetica","normal");doc.text(String(b||"-"),M+36,y,{maxWidth:IW-36});y+=5.5};
+
+  doc.addImage(LOGO,"JPEG",M,y,24,24);const tx=M+28;
+  doc.setFont("helvetica","bold");doc.setFontSize(22);doc.setTextColor(11,45,80);doc.text("TERMOTUR",tx,y+8);
+  doc.setTextColor(0);doc.setFontSize(8);doc.setFont("helvetica","normal");
+  doc.text("Aire condicionat · Calefacció · Gas · Tractament d'aigües",tx,y+13);
+  doc.text("Avda. Rierany dels Frares, 7-8, 08397 Pineda de Mar · Tel. 93 769 02 49 · termotur@termotur.com",tx,y+17.5);
+  doc.setFontSize(9);doc.text("Data manteniment: "+fechaHoy,W-M,y+8,{align:"right"});y+=28;
+  barra("DIVISIÓ MANTENIMENT PREVENTIU");
+  doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text("RI-01 REVISIÓ SPLIT A.C.",M,y);
+  doc.setFontSize(8);doc.setFont("helvetica","normal");doc.text("RE-09-03 · Edició 1",W-M,y,{align:"right"});y+=6;
+  fila("PROJECTE",g("prj"));fila("DIRECCIÓ",g("dir"));fila("SERVEI","AIRE CONDICIONAT");fila("OPERARI",g("ope"));y+=2;
+
+  barra("APARELL D'AIRE CONDICIONAT");
+  fila("MARCA",g("mar"));fila("MODEL",g("mod"));fila("Nº",g("num"));fila("PLANTA / ZONA",g("zona"));
+  fila("UBICACIÓ",g("ubi"));fila("GAS REFRIGERANT",g("gas"));y+=2;
+
+  barra("OPERACIONS A REALITZAR");
+  OPS.forEach(o=>{
+    const a=R.ops[o.n],tl=doc.splitTextToSize(o.n+".  "+o.t,IW-30);
+    const vals=o.c.map(c=>`${c.x}: ${a.c[c.k]||"-"}${c.u&&a.c[c.k]?" "+c.u:""}`).join("   |   ");
+    const vl=doc.splitTextToSize(vals,IW-6);
+    salto(tl.length*4.5+vl.length*4.2+6);
+    doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.text(tl,M,y);
+    const txt={ok:"OK",nok:"NO OK",na:"N/A","":"-"}[a.r];
+    if(a.r==="nok")doc.setTextColor(192,57,43);else if(a.r==="ok")doc.setTextColor(27,127,59);
+    doc.text(txt,W-M,y,{align:"right"});doc.setTextColor(0);y+=tl.length*4.5;
+    doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(70);doc.text(vl,M+4,y);doc.setTextColor(0);
+    y+=vl.length*4.2+1.5;doc.setDrawColor(207,216,223);doc.line(M,y,W-M,y);y+=3.5;
+  });
+  y+=2;
+
+  [["8. OBSERVACIÓ GENERAL",g("obg")],["9. OBSERVACIONS PERSONAL SERVEI TÈCNIC",g("obt")]].forEach(([t,v])=>{
+    barra(t);const l=doc.splitTextToSize(v||"-",IW);salto(l.length*4.5+4);
+    doc.setFont("helvetica","normal");doc.setFontSize(9.5);doc.text(l,M,y);y+=l.length*4.5+4;
+  });
+
+  // Fotos abans / després, una al costat de l'altra
+  const w=(IW-6)/2,fs=[["ABANS DE LA INTERVENCIÓ",R.fa],["DESPRÉS DE LA INTERVENCIÓ",R.fd]];
+  const hs=fs.map(([,f])=>{if(!f)return 0;const p=doc.getImageProperties(f);return w*p.height/p.width});
+  if(R.fa||R.fd){
+    doc.addPage();y=M;barra("ESTAT DE L'APARELL");
+    fs.forEach(([t,f],i)=>{const x=M+i*(w+6);doc.setFont("helvetica","bold");doc.setFontSize(9);doc.text(t,x,y);
+      if(f)doc.addImage(f,"JPEG",x,y+2,w,hs[i]);});
+    y+=Math.max(...hs)+10;
+  }
+
+  salto(62);barra("SIGNATURA DEL TÈCNIC, EMPRESA INSTAL·LADORA I OPERARI RESPONSABLE INTERVENCIÓ");
+  doc.setFont("helvetica","normal");doc.setFontSize(9.5);doc.text("PINEDA DE MAR, a "+fechaHoy,M,y);y+=6;
+  const bw=IW/2-2;
+  [[M,"TÈCNIC","Marc Xavier Tur Doherty\nEnginyer Tècnic Industrial\nCol·legiat núm. 17.234\nCETIG",F[1]],
+   [M+IW/2+2,"OPERARI RESP. INTERVENCIÓ",g("ope"),F[2]]].forEach(([x,t,n,f])=>{
+    doc.setDrawColor(0);doc.rect(x,y,bw,40);doc.setFont("helvetica","bold");doc.setFontSize(8.5);doc.text(t,x+2,y+4.5);
+    doc.setFont("helvetica","normal");doc.text(n,x+2,y+9,{maxWidth:bw*0.45});
+    if(f.ok())doc.addImage(f.img(),"PNG",x+bw*0.48,y+8,bw*0.5,28);
+  });
+  return doc;
+}
+
+// ===== Validació i enviament =====
+function validar(){
+  const f=[];
+  if(!g("prj"))f.push("projecte");
+  if(!g("ope"))f.push("operari");
+  return f;
+}
+$("#bajar").onclick=()=>{crearPDF().save("revisio-prova.pdf")};
+$("#enviar").onclick=async()=>{
+  const f=validar();
+  if(f.length){msg("Falta: "+f.join(", "),"err");return}
+  if(!SCRIPT_URL){msg("Falta configurar SCRIPT_URL al codi.","err");return}
+  msg("Enviant…");$("#enviar").disabled=true;
+  try{
+    const pdf=crearPDF().output("datauristring").split(",")[1];
+    const r=await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({
+      cliente:g("prj"),equipo:[g("mar"),g("mod"),g("ubi")].filter(Boolean).join(" · "),operario:g("ope"),
+      emailCliente:g("mail"),fecha:new Date().toISOString(),pdf})});
+    const j=await r.json();
+    if(j.ok)msg("Enviat correctament.","good");else throw new Error(j.error);
+  }catch(e){msg("No s'ha pogut enviar: "+e.message+". Torna-ho a provar amb cobertura.","err")}
+  $("#enviar").disabled=false;
+};
+</script>
+</body>
+</html>
